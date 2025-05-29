@@ -15,9 +15,7 @@ embassy_nrf::bind_interrupts!(struct Irqs {
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let mut config = Config::default();
-    config.hfclk_source = HfclkSource::ExternalXtal;
-    let peripherals = embassy_nrf::init(config);
+    let peripherals = embassy_nrf::init(Config::default());
 
     // assumes LED on P0_15 with active-high polarity
     let mut gpo_led = Output::new(peripherals.P0_15, Level::Low, OutputDrive::Standard);
@@ -25,14 +23,15 @@ async fn main(_spawner: Spawner) {
     let mut radio = ieee802154::Radio::new(peripherals.RADIO, Irqs);
     let mut packet = Packet::new();
 
+    set_hfclk_source(HfclkSource::ExternalXtal);
     loop {
-        gpo_led.set_low();
         let rv = radio.receive(&mut packet).await;
         gpo_led.set_high();
         match rv {
-            Err(_) => defmt::error!("receive() Err"),
-            Ok(_) => defmt::info!("receive() {:?}", *packet),
+            Ok(_) => defmt::info!("receive({:?})", *packet),
+            Err(err) => defmt::error!("receive() {:?}", err),
         }
         Timer::after_millis(100u64).await;
+        gpo_led.set_low();
     }
 }

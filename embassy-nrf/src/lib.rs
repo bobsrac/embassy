@@ -172,6 +172,8 @@ pub mod uarte;
 pub mod usb;
 #[cfg(not(feature = "_nrf54l"))] // TODO
 pub mod wdt;
+#[cfg(not(feature = "_nrf54l"))] // TODO
+pub mod clock;
 
 // This mod MUST go last, so that it sees all the `impl_foo!` macros
 #[cfg_attr(feature = "_nrf51", path = "chips/nrf51.rs")]
@@ -277,13 +279,7 @@ pub use crate::pac::NVIC_PRIO_BITS;
 pub mod config {
     //! Configuration options used when initializing the HAL.
 
-    /// High frequency clock source.
-    pub enum HfclkSource {
-        /// Internal source
-        Internal,
-        /// External source from xtal.
-        ExternalXtal,
-    }
+    pub use crate::clock::HfclkSource;
 
     /// Low frequency clock source
     pub enum LfclkSource {
@@ -543,7 +539,7 @@ pub mod config {
                 // There are hobby nrf52 boards out there without external XTALs...
                 // Default everything to internal so it Just Works. User can enable external
                 // xtals if they know they have them.
-                hfclk_source: HfclkSource::Internal,
+                hfclk_source: HfclkSource::default(),
                 lfclk_source: LfclkSource::InternalRC,
                 #[cfg(feature = "nrf5340-app-s")]
                 internal_capacitors: InternalCapacitors { hfxo: None, lfxo: None },
@@ -888,25 +884,7 @@ pub fn init(config: config::Config) -> Peripherals {
     let r = pac::CLOCK;
 
     // Start HFCLK.
-    match config.hfclk_source {
-        config::HfclkSource::Internal => {}
-        config::HfclkSource::ExternalXtal => {
-            #[cfg(feature = "_nrf54l")]
-            {
-                r.events_xostarted().write_value(0);
-                r.tasks_xostart().write_value(1);
-                while r.events_xostarted().read() == 0 {}
-            }
-
-            #[cfg(not(feature = "_nrf54l"))]
-            {
-                // Datasheet says this is likely to take 0.36ms
-                r.events_hfclkstarted().write_value(0);
-                r.tasks_hfclkstart().write_value(1);
-                while r.events_hfclkstarted().read() == 0 {}
-            }
-        }
-    }
+    crate::clock::set_hfclk_source(config.hfclk_source);
 
     // Workaround for anomaly 140
     #[cfg(feature = "nrf5340-app-s")]

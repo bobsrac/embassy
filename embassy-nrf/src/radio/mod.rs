@@ -39,6 +39,8 @@ pub enum Error {
     ChannelInUse,
     /// CRC check failed
     CrcFailed(u16),
+    /// HFXO Disabled
+    HfxoDisabled,
 }
 
 /// Interrupt handler

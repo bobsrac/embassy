@@ -309,6 +309,10 @@ impl<'d, T: Instance> Radio<'d, T> {
     /// validated by the hardware; otherwise it returns the `Err` variant. In either case, `packet`
     /// will be updated with the received packet's data
     pub async fn receive(&mut self, packet: &mut Packet) -> Result<(), Error> {
+        if crate::clock::hfclk_source() != crate::clock::HfclkSource::ExternalXtal {
+            return Err(Error::HfxoDisabled);
+        }
+
         let s = T::state();
         let r = T::regs();
 
@@ -356,6 +360,10 @@ impl<'d, T: Instance> Radio<'d, T> {
     // NOTE we do NOT check the address of `packet` because the mutable reference ensures it's
     // allocated in RAM
     pub async fn try_send(&mut self, packet: &mut Packet) -> Result<(), Error> {
+        if crate::clock::hfclk_source() != crate::clock::HfclkSource::ExternalXtal {
+            return Err(Error::HfxoDisabled);
+        }
+
         let s = T::state();
         let r = T::regs();
 
